@@ -1,0 +1,24 @@
+# Backend
+nexus-backend/node_modules/
+nexus-backend/.env
+nexus-backend/coverage/
+nexus-backend/*.log
+
+# Flutter
+nexus-frontend/.dart_tool/
+nexus-frontend/.flutter-plugins
+nexus-frontend/.flutter-plugins-dependencies
+nexus-frontend/.pub-cache/
+nexus-frontend/.pub/
+nexus-frontend/build/
+nexus-frontend/android/.gradle/
+nexus-frontend/android/local.properties
+nexus-frontend/android/key.properties
+nexus-frontend/*.jks
+nexus-frontend/ios/
+
+# General
+.DS_Store
+Thumbs.db
+*.log
+tmp/

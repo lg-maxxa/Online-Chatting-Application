@@ -1,0 +1,147 @@
+name: NexusChat CI
+
+on:
+  push:
+    branches: [main, copilot/**]
+  pull_request:
+    branches: [main]
+
+# Limit default token permissions for security
+permissions:
+  contents: read
+
+jobs:
+  # ── Backend Tests ──────────────────────────────────────────────────────────
+  backend-test:
+    name: Backend – Node.js Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: nexus-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: nexus-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci_test_secret_only
+          JWT_EXPIRES_IN: 1d
+          MONGO_URI: mongodb://localhost:27017/nexuschat_test
+          AWS_ACCESS_KEY_ID: ci_key
+          AWS_SECRET_ACCESS_KEY: ci_secret
+          AWS_REGION: us-east-1
+          AWS_S3_BUCKET_NAME: ci-bucket
+
+  # ── Flutter Tests ──────────────────────────────────────────────────────────
+  flutter-test:
+    name: Frontend – Flutter Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: nexus-frontend
+        run: flutter pub get
+
+      - name: Analyze Flutter code
+        working-directory: nexus-frontend
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run Flutter tests
+        working-directory: nexus-frontend
+        run: flutter test
+
+  # ── Build Release APK ─────────────────────────────────────────────────────
+  build-apk:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [backend-test, flutter-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: nexus-frontend
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: nexus-frontend
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexuschat-release-apk
+          path: nexus-frontend/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+  # ── Deploy Backend to Azure ────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend to Azure App Service
+    runs-on: ubuntu-latest
+    needs: backend-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: nexus-backend/package-lock.json
+
+      - name: Install production dependencies
+        working-directory: nexus-backend
+        run: npm ci --omit=dev
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'nexuschat-api'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: nexus-backend
