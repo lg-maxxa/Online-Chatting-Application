@@ -61,7 +61,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _setupSocketListeners() {
     _socket.onNewMessage((msg) {
       final message = MessageModel.fromJson(msg);
-      if (message.chatId == widget.chat.id || message.senderId != _currentUserId) {
+      if (message.chatId == widget.chat.id && message.senderId != _currentUserId) {
         setState(() => _messages.add(message));
         _scrollToBottom();
         // Mark as read
@@ -427,11 +427,29 @@ class _TypingIndicatorState extends State<_TypingIndicator>
       (i) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 600),
-      )..repeat(reverse: true, min: i * 200 / 1000),
+      )..repeat(reverse: true),
     );
-    _animations = _controllers
-        .map((c) => Tween<double>(begin: 0, end: 6).animate(c))
-        .toList();
+    _animations = List.generate(
+      3,
+      (i) {
+        final start = i * 0.2;
+        return TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 0, end: 6),
+            weight: 50,
+          ),
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 6, end: 0),
+            weight: 50,
+          ),
+        ]).animate(
+          CurvedAnimation(
+            parent: _controllers[i],
+            curve: Interval(start, (start + 0.6).clamp(0.0, 1.0)),
+          ),
+        );
+      },
+    );
   }
 
   @override

@@ -29,17 +29,33 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// ── CORS Configuration ─────────────────────────────────────────────────────
+const allowedOrigin = process.env.CLIENT_ORIGIN || null;
+const corsOptions = {
+  origin: allowedOrigin
+    ? (origin, callback) => {
+        if (!origin || origin === allowedOrigin) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    : true, // Allow all origins only when CLIENT_ORIGIN is not set (dev)
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // ── Socket.io Setup ────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_ORIGIN || '*',
+    origin: allowedOrigin || '*',
     methods: ['GET', 'POST'],
   },
 });
 
 // ── Global Middleware ──────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 

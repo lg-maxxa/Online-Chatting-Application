@@ -21,7 +21,7 @@ router.get('/:chatId', async (req, res) => {
     const chat = await verifyParticipant(req.params.chatId, req.user._id);
     if (!chat) return res.status(403).json({ message: 'Access denied.' });
 
-    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
     const before = req.query.before; // ISO date string for cursor-based pagination
 
     const query = { chatId: req.params.chatId, isDeleted: false };

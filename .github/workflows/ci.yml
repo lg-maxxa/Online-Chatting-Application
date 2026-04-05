@@ -6,11 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# Limit default token permissions for security
+permissions:
+  contents: read
+
 jobs:
   # ── Backend Tests ──────────────────────────────────────────────────────────
   backend-test:
     name: Backend – Node.js Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: nexus-backend
@@ -44,6 +50,8 @@ jobs:
   flutter-test:
     name: Frontend – Flutter Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +79,8 @@ jobs:
   build-apk:
     name: Build Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [backend-test, flutter-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -112,6 +122,8 @@ jobs:
     needs: backend-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4

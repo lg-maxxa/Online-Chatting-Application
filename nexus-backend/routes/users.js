@@ -9,6 +9,9 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
+// Helper: escape special regex characters in user-supplied search terms
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // ── GET /api/users/search?q=<query> ────────────────────────────────────────
 router.get('/search', async (req, res) => {
   try {
@@ -17,7 +20,8 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ message: 'Search query must be at least 2 characters.' });
     }
 
-    const regex = new RegExp(q.trim(), 'i');
+    const safeQuery = escapeRegex(q.trim());
+    const regex = new RegExp(safeQuery, 'i');
     const users = await User.find({
       _id: { $ne: req.user._id },
       $or: [{ username: regex }, { email: regex }],
@@ -49,7 +53,7 @@ router.patch(
   '/me/profile',
   [
     body('status').optional().isLength({ max: 139 }).withMessage('Status max 139 chars'),
-    body('phoneNumber').optional().isMobilePhone().withMessage('Invalid phone number'),
+    body('phoneNumber').optional().isMobilePhone('any').withMessage('Invalid phone number'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
