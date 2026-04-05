@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Chat = require('../models/Chat');
 const Message = require('../models/Message');
 const User = require('../models/User');
@@ -7,6 +8,8 @@ const { protect } = require('../middleware/auth');
 const router = express.Router();
 
 router.use(protect);
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // ── GET /api/chats ──────────────────────────────────────────────────────────
 // List all chats for the authenticated user
@@ -29,6 +32,9 @@ router.post('/', async (req, res) => {
   try {
     const { participantId } = req.body;
     if (!participantId) return res.status(400).json({ message: 'participantId is required.' });
+    if (!isValidObjectId(participantId)) {
+      return res.status(400).json({ message: 'Invalid participantId.' });
+    }
 
     const otherUser = await User.findById(participantId);
     if (!otherUser) return res.status(404).json({ message: 'User not found.' });

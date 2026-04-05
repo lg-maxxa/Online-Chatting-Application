@@ -30,17 +30,22 @@ const app = express();
 const server = http.createServer(app);
 
 // ── CORS Configuration ─────────────────────────────────────────────────────
-const allowedOrigin = process.env.CLIENT_ORIGIN || null;
+// In production, set CLIENT_ORIGIN to your Flutter app's domain or use '*' only for dev.
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim())
+  : null;
+
+const originValidator = (origin, callback) => {
+  // Allow requests with no origin (mobile apps, server-to-server)
+  if (!origin) return callback(null, true);
+  if (!allowedOrigins || allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+  return callback(new Error('Not allowed by CORS'));
+};
+
 const corsOptions = {
-  origin: allowedOrigin
-    ? (origin, callback) => {
-        if (!origin || origin === allowedOrigin) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      }
-    : true, // Allow all origins only when CLIENT_ORIGIN is not set (dev)
+  origin: originValidator,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
@@ -48,7 +53,7 @@ const corsOptions = {
 // ── Socket.io Setup ────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigin || '*',
+    origin: originValidator,
     methods: ['GET', 'POST'],
   },
 });

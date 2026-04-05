@@ -73,7 +73,8 @@ router.post(
 
     try {
       const { email, password } = req.body;
-      const user = await User.findOne({ email }).select('+password');
+      // Explicit string coercion prevents prototype-pollution-based NoSQL injection
+      const user = await User.findOne({ email: String(email) }).select('+password');
 
       if (!user || !(await user.comparePassword(password))) {
         return res.status(401).json({ message: 'Invalid email or password.' });

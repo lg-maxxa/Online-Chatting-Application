@@ -1,5 +1,6 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const { upload } = require('../config/s3');
@@ -11,6 +12,9 @@ router.use(protect);
 
 // Helper: escape special regex characters in user-supplied search terms
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Helper: validate that a string is a valid MongoDB ObjectId
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // ── GET /api/users/search?q=<query> ────────────────────────────────────────
 router.get('/search', async (req, res) => {
@@ -38,6 +42,9 @@ router.get('/search', async (req, res) => {
 // ── GET /api/users/:id ──────────────────────────────────────────────────────
 router.get('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
     const user = await User.findById(req.params.id).select(
       'username email profilePicUrl status isOnline lastSeen'
     );
@@ -101,6 +108,7 @@ router.post('/me/contacts', async (req, res) => {
   try {
     const { contactId } = req.body;
     if (!contactId) return res.status(400).json({ message: 'contactId is required.' });
+    if (!isValidObjectId(contactId)) return res.status(400).json({ message: 'Invalid contactId.' });
 
     const contact = await User.findById(contactId);
     if (!contact) return res.status(404).json({ message: 'User not found.' });
