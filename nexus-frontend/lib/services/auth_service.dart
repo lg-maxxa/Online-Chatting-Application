@@ -25,13 +25,26 @@ class AuthService extends ChangeNotifier {
 
     if (token == null || userJson == null) return false;
 
-    _token = token;
-    _currentUser = UserModel.fromJson(
-      jsonDecode(userJson) as Map<String, dynamic>,
-    );
-    ApiService.instance.setToken(token);
-    notifyListeners();
-    return true;
+    try {
+      final decodedUser = jsonDecode(userJson);
+      if (decodedUser is! Map<String, dynamic>) {
+        await prefs.remove(AppConstants.tokenKey);
+        await prefs.remove(AppConstants.userKey);
+        return false;
+      }
+
+      _token = token;
+      _currentUser = UserModel.fromJson(decodedUser);
+      ApiService.instance.setToken(token);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      await prefs.remove(AppConstants.tokenKey);
+      await prefs.remove(AppConstants.userKey);
+      _token = null;
+      _currentUser = null;
+      return false;
+    }
   }
 
   // ── Register ───────────────────────────────────────────────────────────────
