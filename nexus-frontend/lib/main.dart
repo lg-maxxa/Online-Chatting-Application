@@ -61,7 +61,12 @@ class _SplashState extends State<_Splash> {
 
   Future<void> _decide() async {
     final auth = context.read<AuthService>();
-    final loggedIn = await auth.tryAutoLogin();
+    bool loggedIn = false;
+    try {
+      loggedIn = await auth.tryAutoLogin();
+    } catch (_) {
+      loggedIn = false;
+    }
 
     if (!mounted) return;
     if (loggedIn) {
